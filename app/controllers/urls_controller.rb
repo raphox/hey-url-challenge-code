@@ -4,6 +4,13 @@ class UrlsController < ApplicationController
   def index
     @url = Url.new
     @urls = Url.all.order({ created_at: :desc })
+
+    respond_to do |format|
+      format.html {}
+      format.json {
+        render json: UrlSerializer.new(@urls, { params: { host: url_for(only_path: false) } }).serializable_hash
+      }
+    end
   end
 
   def create
@@ -24,7 +31,11 @@ class UrlsController < ApplicationController
   end
 
   def visit
-    @url = Url.find_by!({ short_url: params[:url] })
+    @url = Url.find_by({ short_url: params[:url] })
+
+    if @url.blank?
+      return render({ file: "#{Rails.root}/public/404.html", layout: false, status: 404 })
+    end
 
     @url.clicks.create({ browser: request.env['HTTP_USER_AGENT'], platform: operating_system })
 
