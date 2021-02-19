@@ -3,48 +3,44 @@
 class UrlsController < ApplicationController
   def index
     @url = Url.new
-    @urls = [
-      Url.new(short_url: '123', original_url: 'http://google.com', created_at: Time.now),
-      Url.new(short_url: '456', original_url: 'http://facebook.com', created_at: Time.now),
-      Url.new(short_url: '789', original_url: 'http://yahoo.com', created_at: Time.now)
-    ]
+    @urls = Url.all.order({ created_at: :desc })
   end
 
   def create
-    # create a new URL record
+    @url = Url.create({ original_url: params[:url][:original_url] })
+
+    flash[:error] = @url.errors.full_messages unless @url.save
+
+    redirect_to urls_path
   end
 
   def show
-    @url = Url.new(short_url: '123', original_url: 'http://google.com', created_at: Time.now)
+    @url = Url.find_by!({ short_url: params[:url] })
+
     # implement queries
-    @daily_clicks = [
-      ['1', 13],
-      ['2', 2],
-      ['3', 1],
-      ['4', 7],
-      ['5', 20],
-      ['6', 18],
-      ['7', 10],
-      ['8', 20],
-      ['9', 15],
-      ['10', 5]
-    ]
-    @browsers_clicks = [
-      ['IE', 13],
-      ['Firefox', 22],
-      ['Chrome', 17],
-      ['Safari', 7]
-    ]
-    @platform_clicks = [
-      ['Windows', 13],
-      ['macOS', 22],
-      ['Ubuntu', 17],
-      ['Other', 7]
-    ]
+    @daily_clicks = @url.clicks.count_by_last_days(10).map { |item| [item.day, item.total] }
+    @browsers_clicks = @url.clicks.count_by_browser.map { |item| [item.browser, item.total] }
+    @platform_clicks = @url.clicks.count_by_platform.map { |item| [item.platform, item.total] }
   end
 
   def visit
-    # params[:url]
-    # @url = find url
+    @url = Url.find_by!({ short_url: params[:url] })
+
+    @url.clicks.create({ browser: request.env['HTTP_USER_AGENT'], platform: operating_system })
+
+    redirect_to @url.original_url
+  end
+
+  private
+
+  def operating_system
+    case request.env['HTTP_USER_AGENT'].downcase
+    when /mac/i then 'Mac'
+    when /windows/i then 'Windows'
+    when /linux/i then 'Linux'
+    when /unix/i then 'Unix'
+    else
+      'Unknown'
+    end
   end
 end
