@@ -13,6 +13,8 @@ class Url < ApplicationRecord
   private
 
   def generate_short_url
+    return if persisted?
+
     code = nil
 
     while code.nil? ||
@@ -25,7 +27,7 @@ class Url < ApplicationRecord
 
   def validate_original_url
     uri = URI.parse(original_url)
-    uri.is_a?(URI::HTTP) && !uri.host.nil?
+    errors.add(:original_url, :invalid) unless uri.is_a?(URI::HTTP) && !uri.host.nil?
   rescue URI::InvalidURIError
     errors.add(:original_url, :invalid)
   end
